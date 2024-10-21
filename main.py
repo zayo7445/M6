@@ -11,9 +11,11 @@ def main():
     stars = pygame.sprite.Group(particles.Star(window) for _ in range(100))
 
     player = Player(position=(100, 100), width=100, height=50, speed=5, health=150)
-
-    enemies = pygame.sprite.Group()
     players = pygame.sprite.Group(player)
+
+    enemy = Enemy(position=(1600, 500), width=50, height=40, speed=6, health=200)
+    enemies = pygame.sprite.Group(enemy)
+
     projectiles = pygame.sprite.Group()
     explosions = pygame.sprite.Group()
 
@@ -44,6 +46,10 @@ def main():
 
         players.draw(window)
         players.update()
+
+        enemies.draw(window)
+        enemies.update()
+        enemy.move()
 
         projectiles.update()
         projectiles.draw(window)

@@ -1,4 +1,5 @@
 import pygame
+import random
 
 
 class Entity(pygame.sprite.Sprite):
@@ -9,9 +10,7 @@ class Entity(pygame.sprite.Sprite):
         self.height = height
         self.speed = speed
         self.health = health
-
         self.image = pygame.Surface((self.width, self.height))
-        self.image.fill((255, 255, 255))
         self.rect = self.image.get_rect(center=self.position)
 
     def update(self):
@@ -19,25 +18,36 @@ class Entity(pygame.sprite.Sprite):
 
 
 class Enemy(Entity):
-    def init(self, position, width, height, speed, health):
-        super().init(position, width, height, speed, health)
+    def __init__(self, position, width, height, speed, health):
+        super().__init__(position, width, height, speed, health)
         self.image.fill((255, 255, 255))
 
-    def create(self):
-        help
+    def move(self):
+        self.position.x -= self.speed
+
+    def hit_player(self, player):
+        if pygame.sprite.collide_rect(self, player) or self.position.x < 0-self.width:
+            return True
+        else:
+            return False
 
 
 class Player(Entity):
-    def init(self, position, width, height, speed, health):
-        super().init(position, width, height, speed, health)
-        self.image.fill((255, 255, 255))
+    def __init__(self, position, width, height, speed, health):
+        super().__init__(position, width, height, speed, health)
+        self.image.fill((52, 235, 229))
+
+    def take_damage(self, amount):
+        self.health -= amount
+        if self.health <= 0:
+            self.kill()
 
     def move(self, keys):
-        if keys[pygame.K_w] and self.position.y > 0:
+        if keys[pygame.K_w] and self.position.y > 0:  # Move Upwards
             self.position.y -= self.speed
-        if keys[pygame.K_s] and self.position.y < 1080 - self.height:
+        if keys[pygame.K_s] and self.position.y < 1080 - self.height:  # Move Downwards
             self.position.y += self.speed
-        if keys[pygame.K_d] and self.position.x < 1920 - self.width:
+        if keys[pygame.K_d] and self.position.x < 1920 - self.width:  # Move Right
             self.position.x += self.speed
-        if keys[pygame.K_a] and self.position.x > 0:
+        if keys[pygame.K_a] and self.position.x > 0:  # Move Left
             self.position.x -= self.speed

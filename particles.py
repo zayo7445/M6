@@ -1,9 +1,8 @@
-import math
-import random
 import pygame
 
 
 class Particle(pygame.sprite.Sprite):
+    group = pygame.sprite.Group()
     def __init__(self, position, width, height, velocity, color):
         super().__init__()
         self.position = pygame.Vector2(position)
@@ -16,68 +15,66 @@ class Particle(pygame.sprite.Sprite):
         self.image.fill(self.color)
         self.rect = self.image.get_rect(center=self.position)
 
+        Particle.group.add(self)
+
     def update(self):
         self.position += self.velocity
         self.rect.center = self.position
 
 
 class Projectile(Particle):
-    def __init__(self, surface, position):
-        velocity: tuple = (25, 0)
-        width: int = 50
-        height: int = 5
-        color: tuple = (37, 99, 235)
+    group = pygame.sprite.Group()
+    def __init__(self, position, width, height, velocity, color, target, damage):
         super().__init__(position, width, height, velocity, color)
-        self.surface = surface
+        self.target = target
+        self.damage = damage
+        self.window = pygame.display.get_surface()
+
+        Projectile.group.add(self)
+
+    def collision(self):
+        collisions = pygame.sprite.spritecollide(self, self.target.group, False)
+        if collisions:
+            for target in collisions:
+                target.take_damage(self.damage)
+            self.kill()
 
     def update(self):
         super().update()
-        if self.position.x >= self.surface.get_width():
+        self.collision()
+        if self.position.x >= self.window.get_width():
             self.kill()
 
 
 class Explosion(Particle):
-    def __init__(self, lifespan, position):
-        speed = random.uniform(1.0, 5.0)
-        angle = random.uniform(0.0, 2 * math.pi)
-        vx = math.cos(angle) * speed
-        vy = math.sin(angle) * speed
-        velocity = (vx, vy)
-        width = random.randint(5, 10)
-        height = width
-        color = random.choice([
-            (251, 191, 36),
-            (249, 115, 22),
-            (239, 68, 68),
-            (127, 29, 29),
-        ])
-        super().__init__(position, width, height, velocity, color)
+    group = pygame.sprite.Group()
+    def __init__(self, position, side, velocity, color, lifespan):
+        super().__init__(position, side, side, velocity, color)
         self.lifespan = lifespan
+        self.init_lifespan = lifespan
+        self.init_side = side
+
+        Explosion.group.add(self)
 
     def update(self):
         super().update()
-        self.width = max(0.0, self.width - 0.1)
-        self.height = self.width
-        self.image = pygame.transform.scale(self.image, (self.width, self.height))
+        side = self.init_side * (self.lifespan / self.init_lifespan)
+        self.image = pygame.transform.scale(self.image, (side, side))
+
         self.lifespan -= 1
         if self.lifespan <= 0:
             self.kill()
 
 
 class Star(Particle):
-    def __init__(self, surface):
-        position = (random.randint(0, surface.get_width()), random.randint(0, surface.get_height()))
-        velocity = (random.uniform(-1.0, -3.0), 0)
-        width = random.randint(1, 5)
-        height = width
-        color = (255, 255, 255)
-        super().__init__(position, width, height, velocity, color)
-        self.surface = surface
+    group = pygame.sprite.Group()
+    def __init__(self, position, side, velocity, color):
+        super().__init__(position, side, side, velocity, color)
+        self.window = pygame.display.get_surface()
+
+        Star.group.add(self)
 
     def update(self):
         super().update()
         if self.position.x <= 0:
-            self.position.x = self.surface.get_width()
-
-
-
+            self.position.x = self.window.get_width()

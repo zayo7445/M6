@@ -1,6 +1,9 @@
 import particles
+import entities
+import random
 import pygame
-from entities import *
+
+
 pygame.init()
 
 
@@ -8,61 +11,52 @@ def main():
     window = pygame.display.set_mode((1920, 1080))
     pygame.display.set_caption("Space Invaders")
 
-    stars = pygame.sprite.Group(particles.Star(window) for _ in range(100))
+    for _ in range(100):
+        particles.Star(
+            position=(random.randint(0, window.get_width()), random.randint(0, window.get_height())),
+            side=random.randint(1, 5),
+            velocity=(random.uniform(-1.0, -3.0), 0),
+            color=(255, 255, 255),
+        )
 
-    player = Player(position=(100, 100), width=100, height=50, speed=5, health=150)
-    players = pygame.sprite.Group(player)
-
-    enemy = Enemy(position=(1600, 500), width=50, height=40, speed=6, health=200)
-    enemies = pygame.sprite.Group(enemy)
-
-    projectiles = pygame.sprite.Group()
-    explosions = pygame.sprite.Group()
+    player = entities.Player(
+        position=(200, window.get_height()//2),
+        width=50,
+        height=50,
+        speed=10,
+        color=(59, 130, 246),
+        health=100,
+    )
+    enemy_spawner = entities.EnemySpawner(
+        interval=5000,
+        delta=100,
+        minimum=1000
+    )
 
     clock = pygame.time.Clock()
-    run: bool = True
-    while run:
-        window.fill((0, 0, 0))
+    dt = 0
 
+    run = True
+    while run:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    pos_x = player.position.x + player.width/2
-                    pos_y = player.position.y
-                    projectiles.add(particles.Projectile(window, (pos_x, pos_y)))
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    projectiles.add(particles.Projectile(window, event.pos))
-                elif event.button == 3:
-                    explosions.add(particles.Explosion(100, event.pos) for _ in range(50))
+                    player.shoot()
 
-        keys = pygame.key.get_pressed()
-        player.move(keys)
+        window.fill((0, 0, 0))
 
-        stars.update()
-        stars.draw(window)
+        enemy_spawner.update(dt)
 
-        players.draw(window)
-        players.update()
+        particles.Particle.group.draw(window)
+        particles.Particle.group.update()
 
-        enemies.draw(window)
-        enemies.update()
-        enemy.move()
-
-        if enemy.collision(player) or enemy.position.x+(enemy.width/2) < 0:
-            player.take_damage(20)
-            enemy.kill
-
-        projectiles.update()
-        projectiles.draw(window)
-
-        explosions.update()
-        explosions.draw(window)
+        entities.Entity.group.draw(window)
+        entities.Entity.group.update()
 
         pygame.display.flip()
-        clock.tick(60)
+        dt = clock.tick(60)
 
     pygame.quit()
 

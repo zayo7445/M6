@@ -29,8 +29,8 @@ def main():
                 run = False
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    pos_x = player.position.x + player.width
-                    pos_y = player.position.y + player.height/2
+                    pos_x = player.position.x + player.width/2
+                    pos_y = player.position.y
                     projectiles.add(particles.Projectile(window, (pos_x, pos_y)))
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:
@@ -50,6 +50,10 @@ def main():
         enemies.draw(window)
         enemies.update()
         enemy.move()
+
+        if enemy.collision(player) or enemy.position.x+(enemy.width/2) < 0:
+            player.take_damage(20)
+            enemy.kill
 
         projectiles.update()
         projectiles.draw(window)

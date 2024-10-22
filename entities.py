@@ -14,7 +14,12 @@ class Entity(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=self.position)
 
     def update(self):
-        self.rect = self.position
+        self.rect.center = self.position
+
+    def take_damage(self, amount):
+        self.health -= amount
+        if self.health <= 0:
+            self.kill()
 
 
 class Enemy(Entity):
@@ -25,22 +30,14 @@ class Enemy(Entity):
     def move(self):
         self.position.x -= self.speed
 
-    def hit_player(self, player):
-        if pygame.sprite.collide_rect(self, player) or self.position.x < 0-self.width:
-            return True
-        else:
-            return False
+    def collision(self, player):
+        return self.rect.colliderect(player.rect)
 
 
 class Player(Entity):
     def __init__(self, position, width, height, speed, health):
         super().__init__(position, width, height, speed, health)
         self.image.fill((52, 235, 229))
-
-    def take_damage(self, amount):
-        self.health -= amount
-        if self.health <= 0:
-            self.kill()
 
     def move(self, keys):
         if keys[pygame.K_w] and self.position.y > 0:  # Move Upwards

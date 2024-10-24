@@ -6,6 +6,7 @@ import pygame
 
 class Entity(pygame.sprite.Sprite):
     group = pygame.sprite.Group()
+
     def __init__(self, position, width, height, speed, color, health):
         super().__init__()
         self.position = pygame.Vector2(position)
@@ -14,7 +15,8 @@ class Entity(pygame.sprite.Sprite):
         self.speed = speed
         self.color = color
         self.health = health
-
+        self.hpmax = health
+        self.window = pygame.display.get_surface()
         self.image = pygame.Surface((self.width, self.height))
         self.image.fill(color)
         self.rect = self.image.get_rect(center=self.position)
@@ -41,6 +43,16 @@ class Entity(pygame.sprite.Sprite):
                 lifespan=100,
             )
 
+    def draw_hpbar(self):
+        if self.health < self.hpmax:
+            xpos = self.position.x-self.width//2
+            ypos = self.position.y+(self.height//2)+6
+            rect = pygame.Rect(xpos, ypos, self.width*(self.health/self.hpmax), 5)
+            rect2 = pygame.Rect(xpos, ypos, self.width, 5)
+            pygame.draw.rect(self.window, (255, 0, 0), rect2)
+            pygame.draw.rect(self.window, (0, 255, 68), rect)
+
+
     def take_damage(self, damage):
         self.health -= damage
         if self.health <= 0:
@@ -50,6 +62,7 @@ class Entity(pygame.sprite.Sprite):
 
 class Player(Entity):
     group = pygame.sprite.Group()
+
     def __init__(self, position, width, height, speed, color, health):
         super().__init__(position, width, height, speed, color, health)
         self.window = pygame.display.get_surface()
@@ -79,7 +92,6 @@ class Player(Entity):
         self.rect.clamp_ip(self.window.get_rect())
         self.position = pygame.Vector2(self.rect.center)
 
-
     def shoot(self):
         particles.Projectile(
             position=(self.position.x + self.width//2, self.position.y),
@@ -93,10 +105,11 @@ class Player(Entity):
 
     def update(self):
         self.move()
-
+        self.draw_hpbar()
 
 class Enemy(Entity):
     group = pygame.sprite.Group()
+
     def __init__(self, position, width, height, speed, color, health, target, damage):
         super().__init__(position, width, height, speed, color, health)
         self.target = target
@@ -118,6 +131,7 @@ class Enemy(Entity):
     def update(self):
         self.collision()
         self.move()
+        self.draw_hpbar()
 
 
 class EnemySpawner:

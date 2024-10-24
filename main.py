@@ -27,6 +27,7 @@ def main():
         color=(59, 130, 246),
         health=100,
     )
+
     enemy_spawner = entities.EnemySpawner(
         interval=5000,
         delta=100,

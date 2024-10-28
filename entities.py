@@ -6,143 +6,186 @@ import pygame
 
 class Entity(pygame.sprite.Sprite):
     group = pygame.sprite.Group()
-    def __init__(self, position, width, height, speed, color, health):
+
+    def __init__(self, position, speed, width, height, color, health):
         super().__init__()
-        self.position = pygame.Vector2(position)
-        self.width = width
-        self.height = height
+        self.image = pygame.Surface((width, height))
+        self.rect = self.image.get_rect(center=position)
+        self.image.fill(color)
+
+        self.velocity = pygame.Vector2(0, 0)
         self.speed = speed
         self.color = color
         self.health = health
+        self.max_health = health
 
-        self.image = pygame.Surface((self.width, self.height))
-        self.image.fill(color)
-        self.rect = self.image.get_rect(center=self.position)
+        self.surface = pygame.display.get_surface()
 
         Entity.group.add(self)
 
-    def explode(self):
-        for _ in range(50):
-            speed = random.uniform(1.0, 5.0)
-            angle = random.uniform(0.0, 2 * math.pi)
-            velocity = (math.cos(angle) * speed - self.speed, math.sin(angle) * speed)
-            side = random.randint(5, 10)
+    def visible(self):
+        return self.surface.get_rect().contains(self.rect)
+
+    def collide(self, other):
+        collides = pygame.sprite.spritecollide(self, other, False)
+        if collides:
+            self.on_collide(collides)
+
+    def on_collide(self, collides):
+        """Override in subclass"""
+        pass
+
+    def destroy(self):
+        for _ in range(100):
+            speed = random.uniform(1, 5)
+            angle = random.uniform(0, 2 * math.pi)
+            velocity = speed * math.cos(angle), speed * math.sin(angle)
+            size = random.randint(5, 10)
             color = random.choice([
                 (251, 191, 36),
                 (249, 115, 22),
                 (239, 68, 68),
                 (127, 29, 29),
             ])
-            particles.Explosion(
-                position=self.position,
-                side=side,
-                velocity=velocity,
-                color=color,
-                lifespan=100,
-            )
+            particles.Burst(self.rect.center, velocity, size, color, 100)
+        self.kill()
+
+    def heal(self, health):
+        self.health += health
+        if self.health > self.max_health:
+            self.health = self.max_health
 
     def take_damage(self, damage):
+        for _ in range(3):
+            speed = random.uniform(1, 5)
+            angle = random.uniform(0, 2 * math.pi)
+            velocity = speed * math.cos(angle), speed * math.sin(angle)
+            size = random.randint(5, 10)
+            color = self.color
+            particles.Burst(self.rect.center, velocity, size, color, 100)
         self.health -= damage
         if self.health <= 0:
-            self.explode()
-            self.kill()
+            self.destroy()
+
+    def healthbar(self):
+        if self.health < self.max_health:
+            pygame.draw.rect(
+                self.surface,
+                (239, 68, 68),
+                (self.rect.x, self.rect.bottom + 5, self.rect.width, 5),
+            )
+            pygame.draw.rect(
+                self.surface,
+                (34, 197, 94),
+                (self.rect.x, self.rect.bottom + 5, self.rect.width * (self.health / self.max_health), 5),
+            )
+
+    def move(self):
+        """Override in subclass"""
+        pass
+
+    def update(self):
+        """Override in subclass"""
+        pass
 
 
 class Player(Entity):
     group = pygame.sprite.Group()
-    def __init__(self, position, width, height, speed, color, health):
-        super().__init__(position, width, height, speed, color, health)
-        self.window = pygame.display.get_surface()
+
+    def __init__(self, position, speed, width, height, color, health):
+        super().__init__(position, speed, width, height, color, health)
+        self.acceleration = 0.05 * speed
+        self.friction = 0.05
 
         Player.group.add(self)
 
     def move(self):
-        direction = pygame.Vector2(0, 0)
-
         keys = pygame.key.get_pressed()
-        key_mapping = {
-            pygame.K_w: (0, -1),
-            pygame.K_s: (0, 1),
-            pygame.K_a: (-1, 0),
-            pygame.K_d: (1, 0),
-        }
-        for key, (dx, dy) in key_mapping.items():
-            if keys[key]:
-                direction.x += dx
-                direction.y += dy
 
-        if direction.length() > 0:
-            direction.scale_to_length(self.speed)
-            self.position += direction
+        if keys[pygame.K_w]: self.velocity.y -= self.acceleration
+        if keys[pygame.K_s]: self.velocity.y += self.acceleration
+        if keys[pygame.K_a]: self.velocity.x -= self.acceleration
+        if keys[pygame.K_d]: self.velocity.x += self.acceleration
 
-        self.rect.center = self.position
-        self.rect.clamp_ip(self.window.get_rect())
-        self.position = pygame.Vector2(self.rect.center)
+        if not (keys[pygame.K_w] or keys[pygame.K_s]):
+            self.velocity.y *= (1 - self.friction)
+        if not (keys[pygame.K_a] or keys[pygame.K_d]):
+            self.velocity.x *= (1 - self.friction)
 
+        if self.velocity.length() > self.speed:
+            self.velocity.scale_to_length(self.speed)
 
-    def shoot(self):
-        particles.Projectile(
-            position=(self.position.x + self.width//2, self.position.y),
-            width=50,
-            height=5,
+        self.rect.move_ip(self.velocity)
+        self.rect.clamp_ip(self.surface.get_rect())
+
+    def laser(self):
+        particles.Laser(
+            position=(self.rect.right, self.rect.centery),
             velocity=(25, 0),
+            width=50, height=5,
             color=self.color,
-            target=Enemy,
+            other=Enemy.group,
             damage=10,
+        )
+
+    def rocket(self):
+        particles.Rocket(
+            position=(self.rect.right, self.rect.centery),
+            velocity=(25, 0),
+            width=50, height=5,
+            color=self.color,
+            other=Enemy.group,
+            damage=1000,
         )
 
     def update(self):
         self.move()
+        self.healthbar()
 
 
 class Enemy(Entity):
     group = pygame.sprite.Group()
-    def __init__(self, position, width, height, speed, color, health, target, damage):
-        super().__init__(position, width, height, speed, color, health)
-        self.target = target
+
+    def __init__(self, position, speed, width, height, color, health, other, damage):
+        super().__init__(position, speed, width, height, color, health)
+        self.other = other
         self.damage = damage
+        self.velocity.x -= speed
+        self.timer = random.randint(60, 180)
+
         Enemy.group.add(self)
 
-    def collision(self):
-        collisions = pygame.sprite.spritecollide(self, self.target.group, False)
-        if collisions:
-            for target in collisions:
-                target.take_damage(self.damage)
-            self.explode()
-            self.kill()
-
     def move(self):
-        self.position.x -= self.speed
-        self.rect.center = self.position
+        self.rect.move_ip(self.velocity)
 
-    def update(self):
-        self.collision()
-        self.move()
+    def on_collide(self, collides):
+        for other in collides:
+            other.take_damage(self.damage)
+        self.destroy()
 
-
-class EnemySpawner:
-    def __init__(self, interval, delta, minimum):
-        self.interval = interval
-        self.delta = delta
-        self.minimum = minimum
-        self.window = pygame.display.get_surface()
-        self.timer = 0
-
-    def spawn_enemy(self):
-        Enemy(
-            position=(self.window.get_width(), random.randint(50, self.window.get_height() - 50)),
-            width=50,
-            height=50,
-            speed=random.randint(3, 7),
-            color=(239, 68, 68),
-            health=random.randint(50, 100),
-            target=Player,
+    def laser(self):
+        particles.Laser(
+            position=(self.rect.left, self.rect.centery),
+            velocity=(-25, 0),
+            width=50, height=5,
+            color=self.color,
+            other=Player.group,
             damage=10,
         )
 
-    def update(self, dt):
-        self.timer += dt
-        if self.timer >= self.interval:
-            self.spawn_enemy()
-            self.timer = 0
-            self.interval = max(self.minimum, self.interval - self.delta)
+    def update(self):
+        self.move()
+        self.healthbar()
+        self.collide(self.other)
+
+        if self.timer <= 0:
+            self.laser()
+            self.timer = random.randint(60, 180)
+        else:
+            self.timer -= 1
+
+
+
+
+
+

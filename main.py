@@ -1,5 +1,6 @@
 import particles
 import entities
+import spawners
 import random
 import pygame
 
@@ -9,29 +10,21 @@ pygame.init()
 
 def main():
     window = pygame.display.set_mode((1920, 1080))
+    rect = window.get_rect()
     pygame.display.set_caption("Space Invaders")
 
     for _ in range(100):
         particles.Star(
-            position=(random.randint(0, window.get_width()), random.randint(0, window.get_height())),
-            side=random.randint(1, 5),
-            velocity=(random.uniform(-1.0, -3.0), 0),
+            position=(random.randint(0, rect.width), random.randint(0, rect.height)),
+            velocity=(random.uniform(-1, -5), 0),
+            size=random.randint(1, 5),
             color=(255, 255, 255),
         )
 
-    player = entities.Player(
-        position=(200, window.get_height()//2),
-        width=50,
-        height=50,
-        speed=10,
-        color=(59, 130, 246),
-        health=100,
-    )
-    enemy_spawner = entities.EnemySpawner(
-        interval=5000,
-        delta=100,
-        minimum=1000
-    )
+    player = entities.Player((500, 500), 15, 50, 50, (59, 130, 246), 100)
+    enemies = spawners.EnemySpawner(5000, 100, 3000)
+
+    health = spawners.HealthSpawner(3e4, 0, 0)
 
     clock = pygame.time.Clock()
     dt = 0
@@ -41,19 +34,22 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            if event.type == pygame.KEYDOWN:
+            elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
-                    player.shoot()
+                    player.laser()
+                elif event.key == pygame.K_r:
+                    player.rocket()
 
         window.fill((0, 0, 0))
-
-        enemy_spawner.update(dt)
 
         particles.Particle.group.draw(window)
         particles.Particle.group.update()
 
         entities.Entity.group.draw(window)
         entities.Entity.group.update()
+
+        enemies.update(dt)
+        health.update(dt)
 
         pygame.display.flip()
         dt = clock.tick(60)
